@@ -1,8 +1,6 @@
-﻿using System;
-
-namespace Fibonacci
+﻿namespace Fibonacci
 {
-    public class NearestFibonacciCalculator
+    public class NearestFibonacciCalculator : INearestFibonacciCalculator
     {
         public long GetNearestFib(long number)
         {
@@ -28,7 +26,7 @@ namespace Fibonacci
 
             do
             {
-                isFib = IsFib(candidate);
+                isFib = Helpers.IsNumberFibonacci(candidate);
                 if (!isFib)
                 {
                     candidate += increment;
@@ -36,16 +34,6 @@ namespace Fibonacci
             } while (!isFib);
 
             return candidate;
-        }
-
-        private bool IsFib(long number)
-        {
-            return IsWholeNumberWithPrecision(Math.Sqrt(5 * number * number + 4)) || IsWholeNumberWithPrecision(Math.Sqrt(5 * number * number - 4));
-        }
-
-        private bool IsWholeNumberWithPrecision(double number)
-        {
-            return Math.Abs(number % 1) <= Double.Epsilon;
         }
     }
 }

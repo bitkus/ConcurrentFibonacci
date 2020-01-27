@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Fibonacci
 {
@@ -10,20 +11,20 @@ namespace Fibonacci
         static void Main(string[] args)
         {
             var nearestFibonacciCalculator = new NearestFibonacciCalculator();
-            var fibonacciSequenceCalculator = new FibonacciSequenceCalculator();
-            Console.WriteLine(nearestFibonacciCalculator.GetNearestFib(11));
-
-            for (int i = 0; i < 10; i++)
+            var node1 = new FibonacciCalculatorNode(State, "node-1", nearestFibonacciCalculator);
+            var node2 = new FibonacciCalculatorNode(State, "node-2", nearestFibonacciCalculator);
+            var tasks = new[]
             {
-                var fib = fibonacciSequenceCalculator.GetNext(State);
-                UpdateState(fib);
-                Console.WriteLine(fib.Value);
-            }
+                Task.Run(() => node1.Run()),
+                Task.Run(() => node2.Run())
+            };
+
+            Task.WaitAll(tasks);
         }
 
-        private static void UpdateState(KeyValuePair<int, long> fib)
+        private static void UpdateState(FibonacciStateItem stateItem)
         {
-            State.Add(fib.Key, fib.Value);
+            State.Add(stateItem);
         }
     }
 }

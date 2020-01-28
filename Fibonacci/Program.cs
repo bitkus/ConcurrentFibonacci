@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Fibonacci
 {
@@ -13,18 +11,15 @@ namespace Fibonacci
             var nearestFibonacciCalculator = new NearestFibonacciCalculator();
             var node1 = new FibonacciCalculatorNode(State, "node-1", nearestFibonacciCalculator);
             var node2 = new FibonacciCalculatorNode(State, "node-2", nearestFibonacciCalculator);
+            var node3 = new FibonacciCalculatorNode(State, "node-3", nearestFibonacciCalculator);
             var tasks = new[]
             {
                 Task.Run(() => node1.Run()),
-                Task.Run(() => node2.Run())
+                Task.Run(() => node2.Run()),
+                Task.Run(() => node3.Run())
             };
 
             Task.WaitAll(tasks);
-        }
-
-        private static void UpdateState(FibonacciStateItem stateItem)
-        {
-            State.Add(stateItem);
         }
     }
 }

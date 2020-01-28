@@ -1,95 +1,100 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Fibonacci
 {
     public class FibonacciState
     {
-        private readonly ConcurrentBag<FibonacciStateItem> _fibonacciBag;
+        private readonly List<FibonacciStateItem> _fibonacciList;
         private static readonly object Lock = new object();
+        private readonly Dictionary<string, bool> _registeredNodes;
+
+        public bool IsEveryNodeReady => _registeredNodes.All(n => n.Value);
 
         public FibonacciState()
         {
-            _fibonacciBag = new ConcurrentBag<FibonacciStateItem>();
+            _fibonacciList = new List<FibonacciStateItem>();
+            _registeredNodes = new Dictionary<string, bool>();
         }
 
-        //public int GetLatestIndex()
-        //{
-        //    lock (Lock)
-        //    {
-        //        return _fibonacciBag.IsEmpty
-        //            ? 0 
-        //            : _fibonacciBag.OrderBy(f => f.Index).Last().Index;
-        //    }
-        //}
-
-        public bool TryGetAndGrabMissingIndex(string nodeId, out FibonacciStateItem stateItem)
+        public bool TryGetAndGrabNextAvailableIndex(string nodeId, out int index)
         {
             lock(Lock) 
             {
-                var max = _fibonacciBag.OrderBy(f => f.Index).Last().Index;
-                var min = _fibonacciBag.OrderBy(f => f.Index).First().Index;
+                var max = _fibonacciList.OrderBy(f => f.Index).Last().Index;
+                var min = _fibonacciList.OrderBy(f => f.Index).First().Index;
 
                 for (var i = min; i <= max; i++)
                 {
-                    if (!_fibonacciBag.Any(f => f.Index == i))
+                    if (!IsPreviousIndexTakenByThisNode(i, nodeId) && !DoesIndexStateItemExist(i))
                     {
-                        stateItem = new FibonacciStateItem
+                        _fibonacciList.Add(new FibonacciStateItem
                         {
                             Fibonacci = 0,
                             Index = i,
-                            NodeId = nodeId
-                        };
-                        _fibonacciBag.Add(stateItem);
+                            NodeId = nodeId,
+                            ComputationState = ComputationState.Computing
+                        });
 
+                        index = i;
                         return true;
                     }
                 }
 
-                stateItem = default;
+                index = int.MinValue;
                 return false;
             }
         }
 
-        public void Update(FibonacciStateItem stateItem)
+        public void RegisterNode(string nodeId) => _registeredNodes.Add(nodeId, false);
+
+        public void NoteNodeReady(string nodeId) => _registeredNodes[nodeId] = true;
+
+        private bool IsPreviousIndexTakenByThisNode(int index, string thisNodeId)
+        {
+            var state = _fibonacciList.FirstOrDefault(f => f.Index == index - 1);
+            return state != null && state.NodeId == thisNodeId;
+        }
+
+        private bool DoesIndexStateItemExist(int index)
+        {
+            return _fibonacciList.Any(f => f.Index == index);
+        }
+
+        public void Update(int index, long fibonacci)
         {
             lock (Lock)
             {
-                var item = _fibonacciBag.First(f => f.Index == stateItem.Index);
-                item = stateItem;
+                var item = _fibonacciList.First(f => f.Index == index);
+                item.Fibonacci = fibonacci;
+                item.ComputationState = ComputationState.Computed;
             }
         }
 
-        //public FibonacciCalculationState GetLatestCalculationState()
-        //{
-        //    lock (Lock)
-        //    {
-        //        var values = _orderedSequence.Values.ToArray();
-        //        return new FibonacciCalculationState
-        //        {
-        //            UltimateFib = values[^1],
-        //            PenultimateFib = values[^2],
-        //            UltimateIndex = _orderedSequence.Keys.Last()
-        //        };
-        //    }
-        //}
-
-        public bool TryGet(int index, out long value)
+        public bool IsFibonacciMissing(int index)
         {
             lock (Lock)
             {
-                try
-                {
-                    var fib = _fibonacciBag.First(f => f.Index == index);
-                    value = fib.Fibonacci;
-                    return true;
-                }
-                catch (Exception)
-                {
-                    value = 0;
-                    return false;
-                }
+                return _fibonacciList.OrderBy(f => f.Index).First().Index - 1 == index;
+            }
+        }
+
+        public bool TryGet(int index, out long fibonacci)
+        {
+            lock (Lock)
+            {
+                var stateItem = _fibonacciList.FirstOrDefault(f => f.Index == index);
+                fibonacci = stateItem == null ? long.MinValue : stateItem.Fibonacci;
+                return stateItem != null && stateItem.ComputationState == ComputationState.Computed;
+            }
+        }
+
+        public bool IsFibonacciComputed(int index)
+        {
+            lock(Lock)
+            {
+                var item = _fibonacciList.FirstOrDefault(f => f.Index == index);
+                return item != null && item.ComputationState == ComputationState.Computed;
             }
         }
 
@@ -97,22 +102,22 @@ namespace Fibonacci
         {
             lock (Lock)
             {
-                _fibonacciBag.Add(stateItem);
+                _fibonacciList.Add(stateItem);
             }
         }
 
-        public bool IsNodeCalculating(int index, string nodeId)
+        public bool IsAllNeededDataReady(FibonacciStateItem stateItem)
         {
-            return _fibonacciBag.Any(f => f.Index == index && f.NodeId == nodeId);
+            lock(Lock)
+            {
+                var ultimateFib = _fibonacciList.FirstOrDefault(i => i.Index == stateItem.Index - 1);
+                var penultimateFib = _fibonacciList.FirstOrDefault(i => i.Index == stateItem.Index - 2);
+                return ultimateFib != null && 
+                       ultimateFib.ComputationState == ComputationState.Computed &&
+                       ultimateFib.NodeId != stateItem.NodeId && 
+                       penultimateFib != null &&
+                       penultimateFib.ComputationState == ComputationState.Computed;
+            }
         }
     }
-
-    //public class FibonacciCalculationState
-    //{
-    //    public int UltimateIndex;
-
-    //    public long UltimateFib;
-
-    //    public long PenultimateFib;
-    //}
 }

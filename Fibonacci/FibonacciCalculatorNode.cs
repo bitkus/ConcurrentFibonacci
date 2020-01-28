@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace Fibonacci
 {
@@ -7,126 +8,111 @@ namespace Fibonacci
         private readonly FibonacciState _state;
         private readonly string _nodeId;
         private readonly INearestFibonacciCalculator _nearestFibonacciCalculator;
+        private int _delayTimeMs = 10;
 
         public FibonacciCalculatorNode(FibonacciState state, string nodeId, INearestFibonacciCalculator nearestFibonacciCalculator)
         {
             _state = state;
             _nodeId = nodeId;
             _nearestFibonacciCalculator = nearestFibonacciCalculator;
-            GetNearestFibonacci();
+            _state.RegisterNode(_nodeId);
         }
 
         public void Run()
         {
-            AttemptCalculation();
+            FindNearestFibonacci();
+            WaitForEveryNode();
+            AttemptComputation();
         }
 
-        private void AttemptCalculation()
+        private void FindNearestFibonacci()
         {
-            var success = _state.TryGetAndGrabMissingIndex(_nodeId, out var stateItem);
-            if (success)
-            {
-                UpdateState(stateItem);
-                AttemptCalculation();
-            }
-            else
-            {
-                Console.WriteLine($"{_nodeId} has finished calucating.");
-            }
-        }
-
-        private void UpdateState(FibonacciStateItem stateItem)
-        {
-            stateItem.Fibonacci = Fibonacci(stateItem.Index);
-            _state.Update(stateItem);
-            Console.WriteLine($"{stateItem.NodeId},{stateItem.Fibonacci}");
-        }
-
-        private void GetNearestFibonacci()
-        {
-            //var seed = new Random().Next();
-            //var seed = new Random().Next(100000);
-            int seed = 0;
+            long seed = new Random().Next();
             if (_nodeId == "node-1")
             {
-                seed = 0;
+                seed = 100;
             }
-            else
+
+            if (_nodeId == "node-3")
             {
-                seed = 100000;
+                seed = 72723460248141L;
             }
-            
+
             Console.WriteLine($"{_nodeId} started with seed {seed}");
             var nearestFib = _nearestFibonacciCalculator.GetNearestFib(seed);
             _state.Add(new FibonacciStateItem
             {
                 Fibonacci = nearestFib,
                 Index = Helpers.GetFibonacciIndex(nearestFib),
-                NodeId = _nodeId
+                NodeId = _nodeId,
+                ComputationState = ComputationState.Computed
             });
+            Console.WriteLine($"{_nodeId} has found the nearest fibonacci to be {nearestFib}");
+            _state.NoteNodeReady(_nodeId);
         }
 
-        //public FibonacciStateItem GetNext(FibonacciState state)
-        //{
-        //    var index = state.GetLatestIndex() + 1;
-        //    var fibonacci = Fibonacci(index);
-        //    return new FibonacciStateItem
-        //    {
-        //        Fibonacci = fibonacci,
-        //        Index = index,
-        //        NodeId = _nodeId
-        //    };
-        //}
+        private void WaitForEveryNode()
+        {
+            if (!_state.IsEveryNodeReady)
+            {
+                Thread.Sleep(_delayTimeMs);
+                WaitForEveryNode();
+            }
+        }
 
-        //private void UpdateCache(FibonacciState state)
-        //{
-        //    _state = state;
-        //}
+        private void AttemptComputation()
+        {
+            var success = _state.TryGetAndGrabNextAvailableIndex(_nodeId, out var index);
+            if (success)
+            {
+                ComputeAndSave(index);
+                AttemptComputation();
+            }
+            else
+            {
+                Console.WriteLine($"{_nodeId} has finished computing.");
+            }
+        }
+
+        private void ComputeAndSave(int index)
+        {
+            var fibonacci = Fibonacci(index);
+            _state.Update(index, fibonacci);
+            Console.WriteLine($"{_nodeId},{fibonacci}");
+        }
 
         private long Fibonacci(int index)
         {
             return index switch
             {
-                0 => 1,
-                1 => 2,
-                _ => GetPenultimateFib(index) + GetUltimateFib(index)
+                0 => 0,
+                1 => 1,
+                _ => GetOrCalculateFibonacci(index - 2) + GetOrCalculateFibonacci(index - 1)
             };
-        }
-
-        private long GetPenultimateFib(int index)
-        {
-            return GetOrCalculateFibonacci(index - 2);
-        }
-
-        private long GetUltimateFib(int index)
-        {
-            return GetOrCalculateFibonacci(index - 1);
         }
 
         private long GetOrCalculateFibonacci(int index)
         {
-            if (_state.TryGet(index, out var ultimateFib))
+            if (_state.IsFibonacciMissing(index))
             {
-                return ultimateFib;
+                return Helpers.CalculateFibonacciAnalytically(index); // specifically choosing not use recursion
             }
 
-            return Fibonacci(index);
+            WaitForData(index, out var fibonacci);
+            return fibonacci;
+        }
+
+        private void WaitForData(int index, out long fibonacci)
+        {
+            if (_state.TryGet(index, out fibonacci))
+            {
+                return;
+            }
+            else
+            {
+                Thread.Sleep(_delayTimeMs);
+                WaitForData(index, out fibonacci);
+            }
         }
     }
-
-    public interface IFibonacciCalculatorNode
-    {
-        void Run();
-
-        //FibonacciStateItem GetNext(FibonacciState currentState);
-    }
-
-    //public class FibonacciCalculationState
-    //{
-    //    public int UltimateIndex;
-
-    //    public long UltimateFib;
-
-    //    public long PenultimateFib;
-    //}
 }

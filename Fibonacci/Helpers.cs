@@ -16,8 +16,13 @@ namespace Fibonacci
         public static bool IsNumberFibonacci(long number)
         {
             var index = GetFibonacciIndex(number);
-            var fib = Math.Round(Math.Pow(Phi, index) / Root5, MidpointRounding.ToEven);
+            var fib = CalculateFibonacciAnalytically(index);
             return number == fib;
+        }
+
+        public static long CalculateFibonacciAnalytically(int index)
+        {
+            return (long)Math.Round(Math.Pow(Phi, index) / Root5, MidpointRounding.ToEven);
         }
     }
 }

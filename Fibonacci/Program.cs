@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Fibonacci
 {
@@ -20,11 +18,6 @@ namespace Fibonacci
             };
 
             Task.WaitAll(tasks);
-        }
-
-        private static void UpdateState(FibonacciStateItem stateItem)
-        {
-            State.Add(stateItem);
         }
     }
 }

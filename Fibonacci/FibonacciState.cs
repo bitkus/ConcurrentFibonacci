@@ -1,47 +1,37 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Generic;
 using System.Linq;
 
 namespace Fibonacci
 {
     public class FibonacciState
     {
-        private readonly ConcurrentBag<FibonacciStateItem> _fibonacciBag;
+        private readonly List<FibonacciStateItem> _fibonacciList;
         private static readonly object Lock = new object();
 
         public FibonacciState()
         {
-            _fibonacciBag = new ConcurrentBag<FibonacciStateItem>();
+            _fibonacciList = new List<FibonacciStateItem>();
         }
 
-        //public int GetLatestIndex()
-        //{
-        //    lock (Lock)
-        //    {
-        //        return _fibonacciBag.IsEmpty
-        //            ? 0 
-        //            : _fibonacciBag.OrderBy(f => f.Index).Last().Index;
-        //    }
-        //}
-
-        public bool TryGetAndGrabMissingIndex(string nodeId, out FibonacciStateItem stateItem)
+        public bool TryGetAndGrabFirstNotComputedIndex(string nodeId, out FibonacciStateItem stateItem)
         {
             lock(Lock) 
             {
-                var max = _fibonacciBag.OrderBy(f => f.Index).Last().Index;
-                var min = _fibonacciBag.OrderBy(f => f.Index).First().Index;
+                var max = _fibonacciList.OrderBy(f => f.Index).Last().Index;
+                var min = _fibonacciList.OrderBy(f => f.Index).First().Index;
 
                 for (var i = min; i <= max; i++)
                 {
-                    if (!_fibonacciBag.Any(f => f.Index == i))
+                    if (!IsIndexComputed(i))
                     {
                         stateItem = new FibonacciStateItem
                         {
                             Fibonacci = 0,
                             Index = i,
-                            NodeId = nodeId
+                            NodeId = nodeId,
+                            ComputationState = ComputationState.Computing
                         };
-                        _fibonacciBag.Add(stateItem);
+                        _fibonacciList.Add(stateItem);
 
                         return true;
                     }
@@ -52,44 +42,27 @@ namespace Fibonacci
             }
         }
 
+        private bool IsIndexComputed(int index)
+        {
+            return _fibonacciList.Any(f => f.Index == index && f.ComputationState == ComputationState.Computed);
+        }
+
         public void Update(FibonacciStateItem stateItem)
         {
             lock (Lock)
             {
-                var item = _fibonacciBag.First(f => f.Index == stateItem.Index);
-                item = stateItem;
+                var item = _fibonacciList.First(f => f.Index == stateItem.Index);
+                item.Fibonacci = stateItem.Fibonacci;
+                item.ComputationState = ComputationState.Computed;
             }
         }
 
-        //public FibonacciCalculationState GetLatestCalculationState()
-        //{
-        //    lock (Lock)
-        //    {
-        //        var values = _orderedSequence.Values.ToArray();
-        //        return new FibonacciCalculationState
-        //        {
-        //            UltimateFib = values[^1],
-        //            PenultimateFib = values[^2],
-        //            UltimateIndex = _orderedSequence.Keys.Last()
-        //        };
-        //    }
-        //}
-
-        public bool TryGet(int index, out long value)
+        public bool TryGet(int index, string nodeId, out FibonacciStateItem stateItem)
         {
             lock (Lock)
             {
-                try
-                {
-                    var fib = _fibonacciBag.First(f => f.Index == index);
-                    value = fib.Fibonacci;
-                    return true;
-                }
-                catch (Exception)
-                {
-                    value = 0;
-                    return false;
-                }
+                stateItem = IsComputedOrBeingComputedByOtherNode(index, nodeId);
+                return stateItem != null;
             }
         }
 
@@ -97,22 +70,18 @@ namespace Fibonacci
         {
             lock (Lock)
             {
-                _fibonacciBag.Add(stateItem);
+                _fibonacciList.Add(stateItem);
             }
         }
 
-        public bool IsNodeCalculating(int index, string nodeId)
+        private FibonacciStateItem IsComputedOrBeingComputedByOtherNode(int index, string nodeId)
         {
-            return _fibonacciBag.Any(f => f.Index == index && f.NodeId == nodeId);
+            //return _fibonacciList.FirstOrDefault(f => f.Index == index &&
+            //                                          f.ComputationState == ComputationState.Computed ||
+            //                                          (f.ComputationState == ComputationState.Computing &&
+            //                                           f.NodeId == nodeId));
+            return _fibonacciList.FirstOrDefault(f => f.Index == index && 
+                                                      f.ComputationState != ComputationState.NotComputed);
         }
     }
-
-    //public class FibonacciCalculationState
-    //{
-    //    public int UltimateIndex;
-
-    //    public long UltimateFib;
-
-    //    public long PenultimateFib;
-    //}
 }

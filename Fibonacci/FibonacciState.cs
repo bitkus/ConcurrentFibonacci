@@ -84,17 +84,8 @@ namespace Fibonacci
             lock (Lock)
             {
                 var stateItem = _fibonacciList.FirstOrDefault(f => f.Index == index);
-                fibonacci = stateItem == null ? long.MinValue : stateItem.Fibonacci;
+                fibonacci = stateItem?.Fibonacci ?? long.MinValue;
                 return stateItem != null && stateItem.ComputationState == ComputationState.Computed;
-            }
-        }
-
-        public bool IsFibonacciComputed(int index)
-        {
-            lock(Lock)
-            {
-                var item = _fibonacciList.FirstOrDefault(f => f.Index == index);
-                return item != null && item.ComputationState == ComputationState.Computed;
             }
         }
 
@@ -103,20 +94,6 @@ namespace Fibonacci
             lock (Lock)
             {
                 _fibonacciList.Add(stateItem);
-            }
-        }
-
-        public bool IsAllNeededDataReady(FibonacciStateItem stateItem)
-        {
-            lock(Lock)
-            {
-                var ultimateFib = _fibonacciList.FirstOrDefault(i => i.Index == stateItem.Index - 1);
-                var penultimateFib = _fibonacciList.FirstOrDefault(i => i.Index == stateItem.Index - 2);
-                return ultimateFib != null && 
-                       ultimateFib.ComputationState == ComputationState.Computed &&
-                       ultimateFib.NodeId != stateItem.NodeId && 
-                       penultimateFib != null &&
-                       penultimateFib.ComputationState == ComputationState.Computed;
             }
         }
     }

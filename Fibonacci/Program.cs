@@ -8,10 +8,9 @@ namespace Fibonacci
 
         static void Main(string[] args)
         {
-            var nearestFibonacciCalculator = new NearestFibonacciCalculator();
-            var node1 = new FibonacciCalculatorNode(State, "node-1", nearestFibonacciCalculator);
-            var node2 = new FibonacciCalculatorNode(State, "node-2", nearestFibonacciCalculator);
-            var node3 = new FibonacciCalculatorNode(State, "node-3", nearestFibonacciCalculator);
+            var node1 = new FibonacciCalculatorNode(State, "node-1", new NearestFibonacciCalculator());
+            var node2 = new FibonacciCalculatorNode(State, "node-2", new NearestFibonacciCalculator());
+            var node3 = new FibonacciCalculatorNode(State, "node-3", new NearestFibonacciCalculator());
             var tasks = new[]
             {
                 Task.Run(() => node1.Run()),

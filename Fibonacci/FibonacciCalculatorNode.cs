@@ -27,15 +27,11 @@ namespace Fibonacci
 
         private void FindNearestFibonacci()
         {
-            long seed = new Random().Next();
+            var random = new Random();
+            var seed = random.Next();
             if (_nodeId == "node-1")
             {
-                seed = 100;
-            }
-
-            if (_nodeId == "node-3")
-            {
-                seed = 72723460248141L;
+                seed = random.Next(10000);
             }
 
             Console.WriteLine($"{_nodeId} started with seed {seed}");
@@ -108,11 +104,9 @@ namespace Fibonacci
             {
                 return;
             }
-            else
-            {
-                Thread.Sleep(_delayTimeMs);
-                WaitForData(index, out fibonacci);
-            }
+
+            Thread.Sleep(_delayTimeMs);
+            WaitForData(index, out fibonacci);
         }
     }
 }
